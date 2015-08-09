@@ -12,6 +12,9 @@ import numpy
 
 from fuel.converters.base import fill_hdf5_file, check_exists, progress_bar
 from fuel.downloaders.base import default_downloader
+from fuel.datasets import H5PYDataset
+from fuel.transformers.defaults import uint8_pixels_to_floatX
+from fuel.utils import find_in_data_path
 
 """
 Labeled Faces in the Wild dataset, converted to fuel
@@ -30,7 +33,6 @@ split using the original version of the images.
 files = ['lfw.tgz', 'lfw-names.txt', 'peopleDevTest.txt', 'peopleDevTrain.txt']
 
 ########### Download section ##############
-
 
 # this subparser hook is used for briq-download
 def download_subparser(subparser):
@@ -56,6 +58,14 @@ def download_subparser(subparser):
 
 ########### Convert section ##############
 
+def loadSingleImageFromRow(tar,r):
+    filename = "lfw/{0}/{0}_{1:04d}.jpg".format(r[0], int(r[1]))
+    return [imread(tar.extractfile(filename))]
+
+def loadSingleLabelFromRow(labelslist,r):
+    nameIndex = labelslist.index(r[0])
+    return [nameIndex]
+
 def loadImagesFromRow(tar, r):
     images = map(lambda n: "lfw/{0}/{0}_{1:04d}.jpg".format(r[0], n+1), range(int(r[1])))
     return map(lambda f:imread(tar.extractfile(f)), images)
@@ -73,7 +83,8 @@ def load_images(split, tar, rows):
         prefix='Converting')
     with progress_bar_context as bar:
         for i, row in enumerate(rows):
-            image_list.append(loadImagesFromRow(tar, row))
+            # image_list.append(loadImagesFromRow(tar, row))
+            image_list.append(loadSingleImageFromRow(tar, row))
             bar.update(i)
     return image_list
 
@@ -97,8 +108,6 @@ def convert_lfw(directory, output_directory, output_filename='lfw.hdf5'):
     # extract all images in set
     train_images_nested = load_images("train", tar, trainrows)
     test_images_nested = load_images("test", tar, testrows)
-    # test_images_nested = map(lambda r:loadImagesFromRow(tar, r), testrows)
-
     train_images_flat = np.array(reduce(lambda a,b: a+b, train_images_nested, []))
     test_images_flat  = np.array(reduce(lambda a,b: a+b, test_images_nested, []))
 
@@ -111,8 +120,10 @@ def convert_lfw(directory, output_directory, output_filename='lfw.hdf5'):
     labelslist.insert(0, 'Empty')
 
     # extract all labels in set
-    train_labels_nested = map(lambda r:loadLabelsFromRow(labelslist, r), trainrows)
-    test_labels_nested = map(lambda r:loadLabelsFromRow(labelslist, r), testrows)
+    # train_labels_nested = map(lambda r:loadLabelsFromRow(labelslist, r), trainrows)
+    # test_labels_nested = map(lambda r:loadLabelsFromRow(labelslist, r), testrows)
+    train_labels_nested = map(lambda r:loadSingleLabelFromRow(labelslist, r), trainrows)
+    test_labels_nested = map(lambda r:loadSingleLabelFromRow(labelslist, r), testrows)
     train_labels_flat = np.array(reduce(lambda a,b: a+b, train_labels_nested, []))
     test_labels_flat  = np.array(reduce(lambda a,b: a+b, test_labels_nested, []))
 
@@ -158,3 +169,57 @@ def convert_lfw(directory, output_directory, output_filename='lfw.hdf5'):
 
 def convert_subparser(subparser):
     subparser.set_defaults(func=convert_lfw)
+
+
+########### Fuel Dataset section ##############
+
+
+class LFW(H5PYDataset):
+    u"""LFW dataset.
+
+    Labeled Faces in the Wild dataset.
+
+    Labeled Faces in the Wild is a database of face photographs
+    designed for studying the problem of unconstrained face recognition.
+
+    http://vis-www.cs.umass.edu/lfw/
+
+    Parameters
+    ----------
+    which_sets : tuple of str
+        Which split to load. Valid values are 'train' and 'test',
+        corresponding to the training set (50,000 examples) and the test
+        set (10,000 examples).
+
+    """
+    filename = 'lfw.hdf5'
+    default_transformers = uint8_pixels_to_floatX(('features',))
+
+    def __init__(self, which_sets, **kwargs):
+        kwargs.setdefault('load_in_memory', True)
+        super(LFW, self).__init__(
+            file_or_path=find_in_data_path(self.filename),
+            which_sets=which_sets, **kwargs)
+
+
+########### Kerosene Dataset section ##############
+
+
+from kerosene.datasets.dataset import Dataset
+from fuel.transformers.image import RandomFixedSizeCrop
+
+class LFWDataset(Dataset):
+    basename = "lfw"
+    version = "0.1.0"
+    url_dir = "https://archive.org/download/kerosene_201508/"
+    class_for_filename_patch = LFW
+
+    # def apply_transforms(self, datasets):
+    #     return map(lambda x: RandomFixedSizeCrop(x, (32, 32),
+    #                                  which_sources=('features',)), datasets)
+
+    def build_data(self, sets, sources):
+        return map(lambda s: LFW(which_sets=[s], sources=sources), sets)
+
+def load_data(sets=None, sources=None, fuel_dir=False):
+    return LFWDataset().load_data(sets, sources, fuel_dir);
