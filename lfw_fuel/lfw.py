@@ -24,8 +24,11 @@ designed for studying the problem of unconstrained face recognition.
 
 http://vis-www.cs.umass.edu/lfw/
 
-This script currently packages the peopleDevTrain / peopleDevTest
-split using the original version of the images.
+This project currently packages the pairsDevTrain / pairsDevTest
+splits images into a fuel compatible dataset along with targets
+that indicate whether the pairs are same or different. It supports
+converting the original lfw dataset, as well as the funneled
+and deepfunneled versions.
 
 """
 
@@ -108,6 +111,7 @@ def convert_lfw(directory, basename, output_directory):
     tgz_filename = "{}.tgz".format(basename)
     tar_filename = "{}.tar".format(basename)
     output_filename = "{}.hdf5".format(basename)
+    tar_subdir = "lfw_funneled" if basename == "lfw-funneled" else basename
 
     # it will be faster to decompress this tar file all at once
     print("--> Converting {} to tar".format(tgz_filename))
@@ -124,8 +128,8 @@ def convert_lfw(directory, basename, output_directory):
 
     print("--> Converting")
     # extract all images in set
-    train_images = load_images("train", tar, basename, trainrows)
-    test_images  = load_images("test",  tar, basename, testrows)
+    train_images = load_images("train", tar, tar_subdir, trainrows)
+    test_images  = load_images("test",  tar, tar_subdir, testrows)
 
     train_labels = np.array(map(lambda r:loadLabelsFromRow(r), trainrows))
     test_labels = np.array(map(lambda r:loadLabelsFromRow(r), testrows))
@@ -193,6 +197,7 @@ class LFW(H5PYDataset):
         set (10,000 examples).
 
     """
+    url_dir = "https://archive.org/download/lfw_fuel/"
     filename = 'lfw.hdf5'
     default_transformers = uint8_pixels_to_floatX(('features',))
 
