@@ -13,7 +13,7 @@ from scipy.misc import imresize
 # this allows the example to be run in-repo
 # (or can be removed if lfw_fuel is installed)
 import sys
-sys.path.append('./..')
+sys.path.append('.')
 
 from lfw_fuel import lfw
 
@@ -36,7 +36,7 @@ def cropImage(im):
     return np.asarray([sized1[:,:,0], sized1[:,:,1], sized1[:,:,2], sized2[:,:,0], sized2[:,:,1], sized2[:,:,2]])
 
 # the data, shuffled and split between tran and test sets
-(X_train, y_train), (X_test, y_test) = lfw.load_data(format="deepfunneled")
+(X_train, y_train), (X_test, y_test) = lfw.load_data()
 # crop features
 X_train = np.asarray(map(cropImage, X_train))
 X_test = np.asarray(map(cropImage, X_test))
