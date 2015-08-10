@@ -217,7 +217,7 @@ from fuel.transformers.image import RandomFixedSizeCrop
 class LFWDataset(Dataset):
     basename = "lfw"
     version = "0.1.0"
-    url_dir = "https://archive.org/download/kerosene_201508/"
+    url_dir = "https://archive.org/download/lfw_fuel/"
     class_for_filename_patch = LFW
 
     # def apply_transforms(self, datasets):

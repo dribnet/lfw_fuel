@@ -3,7 +3,6 @@ from __future__ import print_function
 import numpy as np
 np.random.seed(1337)  # for reproducibility
 
-from kerosene.datasets import mnist
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation, Flatten
 from keras.layers.convolutional import Convolution2D, MaxPooling2D
@@ -35,7 +34,7 @@ def cropImage(im):
     sized2 = imresize(newim[:,:,3:6], (feature_width, feature_height), interp="bicubic", mode="RGB")
     return np.asarray([sized1[:,:,0], sized1[:,:,1], sized1[:,:,2], sized2[:,:,0], sized2[:,:,1], sized2[:,:,2]])
 
-# the data, shuffled and split between tran and test sets
+# the data, shuffled and split between train and test sets
 (X_train, y_train), (X_test, y_test) = lfw.load_data("deepfunneled")
 # crop features
 X_train = np.asarray(map(cropImage, X_train))
