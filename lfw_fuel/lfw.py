@@ -30,9 +30,26 @@ split using the original version of the images.
 """
 
 
-files = ['lfw.tgz', 'lfw-names.txt', 'peopleDevTest.txt', 'peopleDevTrain.txt']
+files = ['lfw-names.txt', 'pairsDevTest.txt', 'pairsDevTrain.txt']
+urlroot = 'http://vis-www.cs.umass.edu/lfw/'
 
 ########### Download section ##############
+
+def resolve_filename(format):
+    imfile = "lfw"
+    if format == "funneled":
+        imfile = "lfw-funneled"
+    elif format == "deepfunneled":
+        imfile = "lfw-deepfunneled"
+    # could add superpixel here I guess..
+    return imfile
+
+# we need a wrapper around the default_downlaoder to resolve files
+def downloader_wrapper(format, directory, **kwargs):
+    # add the right format file to the download list
+    files.insert(0, "{}.tgz".format(resolve_filename(format)))
+    urls = map(lambda s: 'http://vis-www.cs.umass.edu/lfw/' + s, files)
+    default_downloader(directory, urls=urls, filenames=files, **kwargs)
 
 # this subparser hook is used for briq-download
 def download_subparser(subparser):
@@ -43,115 +60,92 @@ def download_subparser(subparser):
         Subparser handling the babi_tasks command.
     """
 
-    # this is a hack of the reqeusts library since many sitesgive a 403
-    # against a python-requests user-agent.
-    # import requests
-    # requests.utils.default_user_agent = lambda: "Mozilla/5.0"
+    # optional format can be funneled, deepfunneled, etc
+    subparser.add_argument(
+        "--format", help="alternate format", type=str, default=None)
 
     urls = map(lambda s: 'http://vis-www.cs.umass.edu/lfw/' + s, files)
 
-    subparser.set_defaults(
-        func=default_downloader,
-        urls=urls,
-        filenames=files)
+    subparser.set_defaults(func=downloader_wrapper)
 
 
 ########### Convert section ##############
 
-def loadSingleImageFromRow(tar,r):
-    filename = "lfw/{0}/{0}_{1:04d}.jpg".format(r[0], int(r[1]))
-    return [imread(tar.extractfile(filename))]
+def loadImage(tar, basename, name, number):
+    filename = "{0}/{1}/{1}_{2:04d}.jpg".format(basename, name, int(number))
+    return imread(tar.extractfile(filename))
 
-def loadSingleLabelFromRow(labelslist,r):
-    nameIndex = labelslist.index(r[0])
-    return [nameIndex]
+def loadImagePairFromRow(tar, basename, r):
+    if(len(r) == 3):
+        # same
+        return [loadImage(tar, basename, r[0], r[1]), loadImage(tar, basename, r[0], r[2])]
+    else:
+        # different
+        return [loadImage(tar, basename, r[0], r[1]), loadImage(tar, basename, r[2], r[3])]
 
-def loadImagesFromRow(tar, r):
-    images = map(lambda n: "lfw/{0}/{0}_{1:04d}.jpg".format(r[0], n+1), range(int(r[1])))
-    return map(lambda f:imread(tar.extractfile(f)), images)
+def loadLabelsFromRow(r):
+    if(len(r) == 3):
+        return 1
+    else:
+        return 0
 
-def loadLabelsFromRow(labelslist, r):
-    nameIndex = labelslist.index(r[0])
-    return [nameIndex] * int(r[1])
-
-# this should be equivalent to map(lambda r:loadImagesFromRow(tar, r), rows)
+# this should be equivalent to
+#   np.array(map(lambda r:loadImagePairFromRow(tar, r), trainrows))
 # but with a progress bar
-def load_images(split, tar, rows):
+def load_images(split, tar, basename, rows):
     image_list = []
     progress_bar_context = progress_bar(
         name='{} images'.format(split), maxval=len(rows),
         prefix='Converting')
     with progress_bar_context as bar:
         for i, row in enumerate(rows):
-            # image_list.append(loadImagesFromRow(tar, row))
-            image_list.append(loadSingleImageFromRow(tar, row))
+            image_list.append(loadImagePairFromRow(tar, basename, row))
             bar.update(i)
-    return image_list
+    return np.array(image_list)
 
 @check_exists(required_files=files)
-def convert_lfw(directory, output_directory, output_filename='lfw.hdf5'):
+def convert_lfw(directory, basename, output_directory):
+    tgz_filename = "{}.tgz".format(basename)
+    tar_filename = "{}.tar".format(basename)
+    output_filename = "{}.hdf5".format(basename)
 
     # it will be faster to decompress this tar file all at once
-    print("--> Converting tgz to tar")
-    with gzip.open('lfw.tgz', 'rb') as f_in, open('lfw.tar', 'wb') as f_out:
+    print("--> Converting {} to tar".format(tgz_filename))
+    with gzip.open(tgz_filename, 'rb') as f_in, open(tar_filename, 'wb') as f_out:
         shutil.copyfileobj(f_in, f_out)
+    tar = tarfile.open(tar_filename)
 
     print("--> Building test/train lists")
     # build lists, throwing away heading
-    with open('peopleDevTrain.txt', 'rb') as csvfile:
+    with open('pairsDevTrain.txt', 'rb') as csvfile:
         trainrows = list(csv.reader(csvfile, delimiter='\t'))[1:]
-    with open('peopleDevTest.txt', 'rb') as csvfile:
+    with open('pairsDevTest.txt', 'rb') as csvfile:
         testrows = list(csv.reader(csvfile, delimiter='\t'))[1:]
 
-    print("--> Loading/converting images")
-    tar = tarfile.open("lfw.tar")
+    print("--> Converting")
     # extract all images in set
-    train_images_nested = load_images("train", tar, trainrows)
-    test_images_nested = load_images("test", tar, testrows)
-    train_images_flat = np.array(reduce(lambda a,b: a+b, train_images_nested, []))
-    test_images_flat  = np.array(reduce(lambda a,b: a+b, test_images_nested, []))
+    train_images = load_images("train", tar, basename, trainrows)
+    test_images  = load_images("test",  tar, basename, testrows)
 
-    print("--> Loading/converting labels")
-    # now labels
-    with open('lfw-names.txt', 'rb') as csvfile:
-        labelrows = list(csv.reader(csvfile, delimiter='\t'))
+    train_labels = np.array(map(lambda r:loadLabelsFromRow(r), trainrows))
+    test_labels = np.array(map(lambda r:loadLabelsFromRow(r), testrows))
 
-    labelslist = map(lambda l:l[0], labelrows)
-    labelslist.insert(0, 'Empty')
+    train_features = np.array([[f[0,:,:,0], f[0,:,:,1], f[0,:,:,2], f[1,:,:,0], f[1,:,:,1], f[1,:,:,2]] for f in train_images])
+    test_features  = np.array([[f[0,:,:,0], f[0,:,:,1], f[0,:,:,2], f[1,:,:,0], f[1,:,:,1], f[1,:,:,2]] for f in test_images])
 
-    # extract all labels in set
-    # train_labels_nested = map(lambda r:loadLabelsFromRow(labelslist, r), trainrows)
-    # test_labels_nested = map(lambda r:loadLabelsFromRow(labelslist, r), testrows)
-    train_labels_nested = map(lambda r:loadSingleLabelFromRow(labelslist, r), trainrows)
-    test_labels_nested = map(lambda r:loadSingleLabelFromRow(labelslist, r), testrows)
-    train_labels_flat = np.array(reduce(lambda a,b: a+b, train_labels_nested, []))
-    test_labels_flat  = np.array(reduce(lambda a,b: a+b, test_labels_nested, []))
+    train_targets = np.array([[n] for n in train_labels])
+    test_targets  = np.array([[n] for n in test_labels])
 
-    print("--> Prepping hdf5 output file")
-    # wrap for hdf5
-    train_features = np.array([[r] for r in train_images_flat])
-    test_features = np.array([[r] for r in test_images_flat])
-    train_labels = np.array([[n] for n in train_labels_flat])
-    test_labels = np.array([[n] for n in test_labels_flat])
-    label_names = np.array([[n] for n in labelslist])
-
-    output_path = os.path.join(output_directory, output_filename)
-
-    # channel rearragement
-    train_features_shaped = np.asarray([[f[0,:,:,0], f[0,:,:,1], f[0,:,:,2]] for f in train_features])
-    test_features_shaped = np.asarray([[f[0,:,:,0], f[0,:,:,1], f[0,:,:,2]] for f in test_features])
-    
-    print("train shapes: ", train_features_shaped.shape, train_labels.shape)
-    print("test shapes:  ", test_features_shaped.shape, test_labels.shape)
-    print("target-names shape:  ", label_names.shape)
+    print("train shapes: ", train_features.shape, train_targets.shape)
+    print("test shapes:  ", test_features.shape, test_targets.shape)
     
     print("--> Writing hdf5 output file")
+    output_path = os.path.join(output_directory, output_filename)
     with h5py.File(output_path, mode="w") as h5file:
-        data = (('train', 'features', train_features_shaped),
-                ('train', 'targets', train_labels),
-                ('test', 'features', test_features_shaped),
-                ('test', 'targets', test_labels),
-                ('target', 'names', label_names))
+        data = (('train', 'features', train_features),
+                ('train', 'targets', train_targets),
+                ('test', 'features', test_features),
+                ('test', 'targets', test_targets))
         fill_hdf5_file(h5file, data)
 
         for i, label in enumerate(('batch', 'channel', 'height', 'width')):
@@ -160,15 +154,22 @@ def convert_lfw(directory, output_directory, output_filename='lfw.hdf5'):
         for i, label in enumerate(('batch', 'index')):
             h5file['targets'].dims[i].label = label
 
-        for i, label in enumerate(('batch', 'index')):
-            h5file['names'].dims[i].label = label
-
     print("--> Done, removing tar file")
-    os.remove("lfw.tar")
+    os.remove(tar_filename)
     return (output_path,)
 
+# wrapper because check_exists is a decarator with directory first
+def convert_lfw_wrapper(directory, format, **kwargs):
+    # print("Got args: {}, {}, {}".format(directory, format, kwargs))
+    basename = resolve_filename(format)
+    files.insert(0, "{}.tgz".format(basename))
+    return convert_lfw(directory, basename, **kwargs)
+
 def convert_subparser(subparser):
-    subparser.set_defaults(func=convert_lfw)
+    # optional format can be funneled, deepfunneled, etc
+    subparser.add_argument(
+        "--format", help="alternate format", type=str, default=None)
+    subparser.set_defaults(func=convert_lfw_wrapper)
 
 
 ########### Fuel Dataset section ##############
@@ -221,5 +222,7 @@ class LFWDataset(Dataset):
     def build_data(self, sets, sources):
         return map(lambda s: LFW(which_sets=[s], sources=sources), sets)
 
-def load_data(sets=None, sources=None, fuel_dir=False):
-    return LFWDataset().load_data(sets, sources, fuel_dir);
+def load_data(format=None, sets=None, sources=None, fuel_dir=False):
+    dataset = LFWDataset()
+    dataset.basename = resolve_filename(format)
+    return dataset.load_data(sets, sources, fuel_dir);
