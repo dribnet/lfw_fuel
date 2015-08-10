@@ -10,6 +10,8 @@ from keras.layers.convolutional import Convolution2D, MaxPooling2D
 from keras.utils import np_utils
 from scipy.misc import imresize 
 
+# this allows the example to be run in-repo
+# (or can be removed if lfw_fuel is installed)
 import sys
 sys.path.append('./..')
 
