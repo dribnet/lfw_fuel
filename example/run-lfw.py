@@ -36,7 +36,7 @@ def cropImage(im):
     return np.asarray([sized1[:,:,0], sized1[:,:,1], sized1[:,:,2], sized2[:,:,0], sized2[:,:,1], sized2[:,:,2]])
 
 # the data, shuffled and split between tran and test sets
-(X_train, y_train), (X_test, y_test) = lfw.load_data()
+(X_train, y_train), (X_test, y_test) = lfw.load_data("deepfunneled")
 # crop features
 X_train = np.asarray(map(cropImage, X_train))
 X_test = np.asarray(map(cropImage, X_test))
