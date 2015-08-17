@@ -69,7 +69,7 @@ def download_subparser(subparser):
 
     urls = map(lambda s: 'http://vis-www.cs.umass.edu/lfw/' + s, files)
 
-    subparser.set_defaults(func='lfw_fuel.lfw.downloader_wrapper')
+    return downloader_wrapper
 
 
 ########### Convert section ##############
@@ -173,7 +173,7 @@ def convert_subparser(subparser):
     # optional format can be funneled, deepfunneled, etc
     subparser.add_argument(
         "--format", help="alternate format", type=str, default=None)
-    subparser.set_defaults(func='lfw_fuel.lfw.convert_lfw_wrapper')
+    return convert_lfw_wrapper
 
 
 ########### Fuel Dataset section ##############
