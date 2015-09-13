@@ -95,21 +95,28 @@ keras project.
 python setup.py install
 ```
 
-You can also rebuild the hdf5 files from scratch by running the
-`kero-download` and `kero-convert` scripts, which are currently
-part of the kerosene installation. For example:
+You can also rebuild the hdf5 files from scratch by running 
+`fuel-download` and `fuel-convert` with updated settings for
+`EXTRA_DOWNLOADERS` and `EXTRA_CONVERTERS`.
 
 ```bash
-kero-download lfw_fuel/lfw.py
-kero-convert lfw_fuel/lfw.py
+FUEL_EXTRA_DOWNLOADERS="lfw_fuel" fuel-download lfw
+FUEL_EXTRA_CONVERTERS="lfw_fuel" fuel-convert lfw
 ```
 
 This will convert the original version of lfw, but funneled and
 deepfunneled formats are also supported:
 
 ```bash
-kero-download lfw_fuel/lfw.py --format deepfunneled
-kero-convert lfw_fuel/lfw.py --format deepfunneled
+FUEL_EXTRA_DOWNLOADERS="lfw_fuel" fuel-download lfw --format deepfunneled
+FUEL_EXTRA_CONVERTERS="lfw_fuel" fuel-convert lfw --format deepfunneled
+```
+
+These settings can also be set in the `~/.fuelrc` file:
+
+```
+extra_downloaders: ['lfw_fuel']
+extra_converters: ['lfw_fuel']
 ```
 
 ## License
