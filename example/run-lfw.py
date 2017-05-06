@@ -5,7 +5,7 @@ np.random.seed(1337)  # for reproducibility
 
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation, Flatten
-from keras.layers.convolutional import Convolution2D, MaxPooling2D
+from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.utils import np_utils
 from scipy.misc import imresize 
 
@@ -54,7 +54,7 @@ model.add(Conv2D(32, (3,3), input_shape=(6,32,32), padding='valid'))
 model.add(Activation('relu'))
 model.add(Conv2D(32, (3,3), input_shape=(6,32,32), padding='valid'))
 model.add(Activation('relu'))
-model.add(MaxPooling2D(poolsize=(2, 2)))
+model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.25))
 
 model.add(Flatten())
