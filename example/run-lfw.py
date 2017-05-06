@@ -37,8 +37,8 @@ def cropImage(im):
 # the data, shuffled and split between train and test sets
 (X_train, y_train), (X_test, y_test) = lfw.load_data("deepfunneled")
 # crop features
-X_train = np.asarray(map(cropImage, X_train))
-X_test = np.asarray(map(cropImage, X_test))
+X_train = np.asarray(list(map(cropImage, X_train)))
+X_test = np.asarray(list(map(cropImage, X_test)))
 
 # print shape of data while model is building
 print("{1} train samples, {2} channel{0}, {3}x{4}".format("" if X_train.shape[1] == 1 else "s", *X_train.shape))
