@@ -121,9 +121,9 @@ def convert_lfw(directory, basename, output_directory):
 
     print("--> Building test/train lists")
     # build lists, throwing away heading
-    with open('pairsDevTrain.txt', 'rb') as csvfile:
+    with open('pairsDevTrain.txt', 'r') as csvfile:
         trainrows = list(csv.reader(csvfile, delimiter='\t'))[1:]
-    with open('pairsDevTest.txt', 'rb') as csvfile:
+    with open('pairsDevTest.txt', 'r') as csvfile:
         testrows = list(csv.reader(csvfile, delimiter='\t'))[1:]
 
     print("--> Converting")
