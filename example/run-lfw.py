@@ -5,7 +5,7 @@ np.random.seed(1337)  # for reproducibility
 
 from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation, Flatten
-from keras.layers.convolutional import Convolution2D, MaxPooling2D
+from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.utils import np_utils
 from scipy.misc import imresize 
 
@@ -37,8 +37,8 @@ def cropImage(im):
 # the data, shuffled and split between train and test sets
 (X_train, y_train), (X_test, y_test) = lfw.load_data("deepfunneled")
 # crop features
-X_train = np.asarray(map(cropImage, X_train))
-X_test = np.asarray(map(cropImage, X_test))
+X_train = np.asarray(list(map(cropImage, X_train)))
+X_test = np.asarray(list(map(cropImage, X_test)))
 
 # print shape of data while model is building
 print("{1} train samples, {2} channel{0}, {3}x{4}".format("" if X_train.shape[1] == 1 else "s", *X_train.shape))
@@ -50,24 +50,24 @@ Y_test = np_utils.to_categorical(y_test, nb_classes)
 
 model = Sequential()
 
-model.add(Convolution2D(32, 6, 3, 3, border_mode='full'))
+model.add(Conv2D(32, (3,3), input_shape=(6,32,32), padding='valid'))
 model.add(Activation('relu'))
-model.add(Convolution2D(32, 32, 3, 3))
+model.add(Conv2D(32, (3,3), input_shape=(6,32,32), padding='valid'))
 model.add(Activation('relu'))
-model.add(MaxPooling2D(poolsize=(2, 2)))
+model.add(MaxPooling2D(pool_size=(2, 2)))
 model.add(Dropout(0.25))
 
 model.add(Flatten())
-model.add(Dense(feature_width*feature_height*8, 128))
+model.add(Dense(128))
 model.add(Activation('relu'))
 model.add(Dropout(0.5))
 
-model.add(Dense(128, nb_classes))
+model.add(Dense(nb_classes))
 model.add(Activation('softmax'))
 
-model.compile(loss='categorical_crossentropy', optimizer='adadelta')
+model.compile(loss='categorical_crossentropy', metrics=['binary_accuracy'], optimizer='adadelta')
 
-model.fit(X_train, Y_train, batch_size=batch_size, nb_epoch=nb_epoch, show_accuracy=True, verbose=1, validation_data=(X_test, Y_test))
-score = model.evaluate(X_test, Y_test, show_accuracy=True, verbose=0)
+model.fit(X_train, Y_train, batch_size=batch_size, epochs=nb_epoch, verbose=1, validation_data=(X_test, Y_test))
+score = model.evaluate(X_test, Y_test, verbose=0)
 print('Test score:', score[0])
 print('Test accuracy:', score[1])
