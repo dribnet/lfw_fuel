@@ -51,7 +51,7 @@ def resolve_filename(format):
 def downloader_wrapper(format, directory, **kwargs):
     # add the right format file to the download list
     files.insert(0, "{}.tgz".format(resolve_filename(format)))
-    urls = map(lambda s: 'http://vis-www.cs.umass.edu/lfw/' + s, files)
+    urls = list(map(lambda s: 'http://vis-www.cs.umass.edu/lfw/' + s, files))
     default_downloader(directory, urls=urls, filenames=files, **kwargs)
 
 # this subparser hook is used for briq-download
@@ -67,7 +67,7 @@ def download_subparser(subparser):
     subparser.add_argument(
         "--format", help="alternate format", type=str, default=None)
 
-    urls = map(lambda s: 'http://vis-www.cs.umass.edu/lfw/' + s, files)
+    urls = list(map(lambda s: 'http://vis-www.cs.umass.edu/lfw/' + s, files))
 
     return downloader_wrapper
 
@@ -121,9 +121,9 @@ def convert_lfw(directory, basename, output_directory):
 
     print("--> Building test/train lists")
     # build lists, throwing away heading
-    with open('pairsDevTrain.txt', 'rb') as csvfile:
+    with open('pairsDevTrain.txt', 'r') as csvfile:
         trainrows = list(csv.reader(csvfile, delimiter='\t'))[1:]
-    with open('pairsDevTest.txt', 'rb') as csvfile:
+    with open('pairsDevTest.txt', 'r') as csvfile:
         testrows = list(csv.reader(csvfile, delimiter='\t'))[1:]
 
     print("--> Converting")
@@ -131,8 +131,8 @@ def convert_lfw(directory, basename, output_directory):
     train_images = load_images("train", tar, tar_subdir, trainrows)
     test_images  = load_images("test",  tar, tar_subdir, testrows)
 
-    train_labels = np.array(map(lambda r:loadLabelsFromRow(r), trainrows))
-    test_labels = np.array(map(lambda r:loadLabelsFromRow(r), testrows))
+    train_labels = np.array(list(map(lambda r:loadLabelsFromRow(r), trainrows)))
+    test_labels = np.array(list(map(lambda r:loadLabelsFromRow(r), testrows)))
 
     train_features = np.array([[f[0,:,:,0], f[0,:,:,1], f[0,:,:,2], f[1,:,:,0], f[1,:,:,1], f[1,:,:,2]] for f in train_images])
     test_features  = np.array([[f[0,:,:,0], f[0,:,:,1], f[0,:,:,2], f[1,:,:,0], f[1,:,:,1], f[1,:,:,2]] for f in test_images])

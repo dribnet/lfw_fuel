@@ -9,7 +9,7 @@ to indicate whether the pairs are same or different. In addition
 to the original lfw dataset, conversion is supported for both
 the funneled and deepfunneled versions of the images.
 
-This project uses [kerosene](https://github.com/dribnet/kerosene) to produce a [fuel](https://github.com/mila-udem/fuel) comptable
+This project uses [kerosene](https://github.com/dribnet/kerosene) to produce a [fuel](https://github.com/mila-udem/fuel)-compatible
 hdf5 file that is usable by [blocks](https://github.com/mila-udem/blocks) or [keras](https://github.com/fchollet/keras).
 
 ## Show me
@@ -38,8 +38,8 @@ to the network as shown in the example.
 
 ## What's this dataset all about again?
 
-The primary task of Labeled Faces in the Wild is to learn wheather the face
-in two pictures are the same person, or two different people. There are
+The primary task of Labeled Faces in the Wild is to learn whether the faces
+in two pictures are of the same person, or two different people. There are
 2200 training pairs and 1000 test pairs in the predefined split.
 
 Here are three matching training pairs:
